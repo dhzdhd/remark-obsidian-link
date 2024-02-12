@@ -1,57 +1,132 @@
-<h1 align="center">
-🌀 Portal.JS
-<br />
-Rapidly build rich data portals using a modern frontend framework
-</h1>
+# remark-wiki-link
 
-* [What is Portal.JS ?](#What-is-Portal.JS)
-    * [Features](#Features)
-      * [For developers](#For-developers)
-* [Docs](#Docs)
-* [Community](#Community)
-* [Appendix](#Appendix)
-    * [What happened to Recline?](#What-happened-to-Recline?)
+Parse and render wiki-style links in markdown especially Obsidian style links.
 
-# What is Portal.JS
+## What is this ?
 
-🌀 Portal.JS is a framework for rapidly building rich data portal frontends using a modern frontend approach. Portal.JS can be used to present a single dataset or build a full-scale data catalog/portal.
+Using obsidian, when we type in wiki link syntax for eg. `[[wiki_link]]` it would parse them as anchors.
 
-Built in JavaScript and React on top of the popular [Next.js](https://nextjs.com/) framework. Portal.JS assumes a "decoupled" approach where the frontend is a separate service from the backend and interacts with backend(s) via an API. It can be used with any backend and has out of the box support for [CKAN](https://ckan.org/).
+## Features supported
 
-## Features
+- [x] Support `[[Internal link]]`
+- [x] Support `[[Internal link|With custom text]]`
+- [x] Support `[[Internal link#heading]]`
+- [x] Support `[[Internal link#heading|With custom text]]`
+- [x] Support `![[Document.pdf]]`
+- [x] Support `![[Image.png]]`
 
-- 🗺️ Unified sites: present data and content in one seamless site, pulling datasets from a DMS (e.g. CKAN) and content from a CMS (e.g. Wordpress) with a common internal API.
-- 👩‍💻 Developer friendly: built with familiar frontend tech (JavaScript, React, Next.js).
-- 🔋 Batteries included: full set of portal components out of the box e.g. catalog search, dataset showcase, blog, etc.
-- 🎨 Easy to theme and customize: installable themes, use standard CSS and React+CSS tooling. Add new routes quickly.
-- 🧱 Extensible: quickly extend and develop/import your own React components
-- 📝 Well documented: full set of documentation plus the documentation of Next.js and Apollo.
+* Supported image formats are jpg, jpeg, png, apng, webp, gif, svg, bmp, ico
+* Unsupported image formats will display a raw wiki link string, e.g. `[[Image.xyz]]`.
 
-### For developers
+Future support:
 
-- 🏗 Build with modern, familiar frontend tech such as JavaScript and React.
-- 🚀 Next.js framework: so everything in Next.js for free: Server Side Rendering, Static Site Generation, huge number of examples and integrations, etc.
-  - Server Side Rendering (SSR) => Unlimited number of pages, SEO and more whilst still using React.
-  - Static Site Generation (SSG) => Ultra-simple deployment, great performance, great lighthouse scores and more (good for small sites)
+- [ ] Support `![[Audio.mp3]]`
+- [ ] Support `![[Video.mp4]]`
+- [ ] Support `![[Embed note]]`
+- [ ] Support `![[Embed note#heading]]`
 
-#### **Check out the [Portal.JS website](https://portaljs.org/) for a gallery of live portals**
+## Installation
 
-___
+```bash
+npm install @portaljs/remark-wiki-link
+```
 
-# Docs
+## Usage
 
-Access the Portal.JS documentation at:
+```javascript
+import unified from "unified";
+import markdown from "remark-parse";
+import wikiLinkPlugin from "@portaljs/remark-wiki-link";
 
-https://portaljs.org/docs
+const processor = unified().use(markdown).use(wikiLinkPlugin);
+```
 
-- [Examples](https://portaljs.org/docs#examples)
+## Configuration options
 
-# Community
+### `pathFormat`
 
-If you have questions about anything related to Portal.JS, you're always welcome to ask our community on [GitHub Discussions](https://github.com/datopian/portal.js/discussions) or on our [Discord server](https://discord.gg/EeyfGrGu4U).
+Type: `"raw" | "obisidan-absolute" | "obsidian-short"`
+Default: `"raw"`
 
-# Appendix
+- `"raw"`: use this option for regular relative or absolute paths (or Obsidian relative paths), e.g. `[[../some/folder/file]]` or `[[[/some/folder/file]]]`,
+- `"obsidian-absolute"`: use this option for Obsidian absolute paths, i.e. paths with no leading `/`, e.g. `[[some/folder/file]]`
+- `"obsidian-short"`: use this option for Obsidian shortened paths, e.g. `[[file]]` to resolve them to absolute paths. Note that apart from setting this value, you will also need to pass a list of paths to files in your content folder, and pass it as `permalinks` option. You can generate this list yourself or use our util function `getPermalinks`. See below for more info.
 
-## What happened to Recline?
+> [!note]
+> Wiki link format in Obsidian can be configured in Settings -> Files & Links -> New link format.
 
-Portal.JS used to be Recline(JS). If you are looking for the old Recline codebase it still exists:  see the [`recline` branch](https://github.com/datopian/portal.js/tree/recline). If you want context for the rename see [this issue](https://github.com/datopian/portal.js/issues/520).
+### `aliasDivider`
+
+Type: single character string
+Default: `"|"`
+
+Alias divider character used in your wiki links. E.g. `[[/some/folder/file|Alias]]`
+
+### `permalinks`
+
+Type: `Array<string>`
+Default: `[]`
+
+A list of permalinks you want to match your wiki link paths with. Wiki links with matched permalinks will have `node.data.exists` property set to `true`. Wiki links with no matching permalinks will also have additional class `new` set.
+
+### `wikiLinkResolver`
+
+Type: `(name: string) => Array<string>`
+Default: `(name: string) => name.replace(/\/index$/, "")` (simplified; see source code for full version)
+
+A function that will take the wiki link target page (e.g. `"/some/folder/file"` in `[[/some/folder/file#Some Heading|Some Alias]]` wiki link) and return an array of pages to which the wiki link **can** be resolved (one of them will be used, depending on wheather `pemalinks` are passed, and if match is found).
+
+If `permalinks` are passed, the resulting array will be matched against these permalinks to find the match. The matching pemalink will be used as node's `href` (or `src` for images).
+
+If no matching permalink is found, the first item from the array returned by this function will be used as a node's `href` (or `src` for images). So, if you want to write a custom wiki link -> url
+
+### `newClassName`
+
+Type: `string`
+Default: `"new"`
+
+Class name added to nodes created for wiki links for which no matching permalink (passed in `permalinks` option) was found.
+
+### `wikiLinkClassName`
+
+Type: `string`
+Default: `"internal"`
+
+Class name added to all wiki link nodes.
+
+### `hrefTemplate`
+
+Type: `(permalink: string) => string`
+Default: `(permalink: string) => permalink`
+
+A function that will be used to convert a matched permalink of the wiki link to `href` (or `src` for images).
+
+### `markdownFolder` ❌ (deprecated as of version 1.1.0)
+
+A string that points to the content folder, that will be used to resolve Obsidian shortened wiki link path format.
+
+Instead of using this option, use e.g. `getPermalinks` util function exported from this package to generate a list of permalinks from your content folder, and pass it explicitly as `permalinks` option.
+
+## Generating list of permalinks from content folder with `getPermalinks`
+
+If you're using shortened path format for your Obsidian wiki links, in order to resolve them correctly to paths they point to, you need to set `option.pathFormat: "obsidian-short"` but also provide the plugin with a list of permalinks that point to files in your content folder as `option.permalinks`. You can use your own script to generate this list or use our util function `getPermalinks` like so:
+
+```javascript {4,6,11-12}
+import unified from "unified";
+import markdown from "remark-parse";
+import wikiLinkPlugin from "@portaljs/remark-wiki-link";
+import { getPermalinks } from "@portaljs/remark-wiki-link";
+
+const permalinks = await getPermalinks("path-to-your-content-folder");
+
+const processor = unified().use(markdown).use(wikiLinkPlugin, {
+  pathFormat: "obsidian-short",
+  permalinks,
+});
+```
+
+## Running tests
+
+```bash
+pnpm nx test remark-wiki-link
+```
